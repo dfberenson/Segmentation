@@ -9,6 +9,7 @@ import os
 from skimage import io, filters, morphology, measure, util
 from scipy.ndimage import distance_transform_edt
 import pandas as pd
+import numpy as np
 
 """
 File
@@ -66,37 +67,57 @@ cell_dict = TrackingDataDictionary(excel_filename)
 cell_names = XlsxSheetNames(excel_filename)
 
 labels = RenameLabels(labels,cell_dict)
+
+# Measures intensities and area so each cell in cell_dict now points to a list in the format
+# [cellnum , [[frame , [x,y] , [intensity, area, mean]]]]
+# Also gets a cellwise list of just the intensities as a timeseries
+
+intensities_series = []
+for cell in cell_dict:
+    this_cell = cell_dict[cell]
+    thiscell_intensity_series = []
+    for t in range(this_cell[1][0][0] - 1 , this_cell[1][-1][0]):
+        this_label = (labels[:,:,t] == this_cell[0]).astype(np.int)
+        properties = measure.regionprops(this_label , im_stack[:,:,t])[0]
+        mean = properties.mean_intensity
+        area = properties.area
+        intensity = mean * area
+        this_cell[1][t].append([intensity, area, mean])
+        thiscell_intensity_series.append(intensity)
         
-    
+    intensities_series.append(thiscell_intensity_series)
+        
+
+
 
 """
 Get statistics in 3D
 """
-
-
-columns = ('x','y','I','A')
-for i in range(T):
-    props = measure.regionprops(labels) # 2D regionprops
-    
-                           
-
-for z, frame in enumerate(labels):
-    f_prop = measure.regionprops(frame.astype(np.int),
-                intensity_image=dapi[z,:,:])
-    for d in f_prop:
-        radius = (d.area / np.pi)**0.5
-        if (min_radius < radius < max_radius):
-            properties.append([d.weighted_centroid[0],
-                              d.weighted_centroid[1],
-                              z, d.mean_intensity * d.area,
-                              radius])
-            indices.append(d.label)
-
-if not len(indices):
-    all_props = pd.DataFrame([],index=[])
-indices = pd.Index(indices, name='label')
-properties = pd.DataFrame(properties, index=indices, columns=columns)
-properties['I'] /= properties['I'].max()
+#
+#
+#columns = ('x','y','I','A')
+#for i in range(T):
+#    props = measure.regionprops(labels) # 2D regionprops
+#    
+#                           
+#
+#for z, frame in enumerate(labels):
+#    f_prop = measure.regionprops(frame.astype(np.int),
+#                intensity_image=dapi[z,:,:])
+#    for d in f_prop:
+#        radius = (d.area / np.pi)**0.5
+#        if (min_radius < radius < max_radius):
+#            properties.append([d.weighted_centroid[0],
+#                              d.weighted_centroid[1],
+#                              z, d.mean_intensity * d.area,
+#                              radius])
+#            indices.append(d.label)
+#
+#if not len(indices):
+#    all_props = pd.DataFrame([],index=[])
+#indices = pd.Index(indices, name='label')
+#properties = pd.DataFrame(properties, index=indices, columns=columns)
+#properties['I'] /= properties['I'].max()
 
 #"""
 #Watershed
