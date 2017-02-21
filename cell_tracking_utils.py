@@ -3,6 +3,10 @@
 Created on Mon Feb 13 16:26:41 2017
 
 @author: dfberenson@gmail.com
+
+@ToDo: Convert data to numpy arrays rather than lists
+@ToDo: Use centroid-based scheme for mapping off-target clicks rather than expanding grid
+
 """
 
 
@@ -22,8 +26,8 @@ def XlsxSheetNames(filename):
     sheet_names = xlsx.sheet_names
     return sheet_names
 
-#Takes filename for Excel file as input and returns a dictionary where each sheet name (a cell) is keyed to a list
-#in the form [cellnum,[[frame,[x,y]]]] where cellnum is a new cell index number
+#Takes filename for Excel file as input and returns a dictionary where each sheet name (a cell number starting with 1000) is keyed to a list
+#in the form [[frame,[x,y]]] where cellnum is a new cell index number
 def TrackingDataDictionary(filename):
     import pandas
     data = XlsxReader(filename)
@@ -40,9 +44,8 @@ def TrackingDataDictionary(filename):
         for j in range(len(frames)):
             track_coordinates.append([frames[j] , [X[j],Y[j]]])
             
-        cellnum = i+1001
-        cell_data = [cellnum , track_coordinates]
-        d[sheet_names[i]] = cell_data
+        cellnum = int(sheet_names[i])
+        d[cellnum] = track_coordinates
          
          
     return d
@@ -50,25 +53,25 @@ def TrackingDataDictionary(filename):
 
 #Takes 'labels' pixel matrix with originally assigned numerical labels for each cell and reassigns the numerical label
 #according to the cellnum from the cell data dictionary
-def RenameLabels(labels,cell_dict):
+def RenameLabels(labels , cell_dict):
     for cell in cell_dict:
         if cell == 'notes':
             print cell_dict[cell]
         else:
             cell_data = cell_dict[cell]
-            #cell_data is a list in the format [cellnum , [frame, [x,y]]]
-            cellnum = cell_data[0]
-            lifespan = len(cell_data[1])
-            first_frame = cell_data[1][0][0] - 1                                  #finds the right frame index for the first frame in which the cell appears
+            #cell_data is a list in the format [frame, [x,y]]
+            cellnum = cell
+            lifespan = len(cell_data)
+            first_frame = cell_data[0][0] - 1                                  #finds the right frame index for the first frame in which the cell appears
             for f in range(lifespan):
-                xy = cell_data[1][f][1]                                           #gets the xy coordinates for the current cell
+                xy = cell_data[f][1]                                           #gets the xy coordinates for the current cell
                 xy_near = xy
                 dist = 0
                 t = first_frame + f                                               #adjusts the frame index to match the image stack
                 curr_labels = labels[:,:,t]                                       #gets the label matrix for this frame
                 cell_labelnum = curr_labels[xy[1],xy[0]]                          #finds the original label number of the tracked cell.
                                            #Note we need to address the coordinates as (Y,X)
-
+                                           
                 while cell_labelnum == 0:
                     dist += 1
                     

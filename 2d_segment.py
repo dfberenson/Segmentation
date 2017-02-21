@@ -10,13 +10,19 @@ from skimage import io, filters, morphology, measure, util
 from scipy.ndimage import distance_transform_edt
 import pandas as pd
 import numpy as np
+import time
 
 """
 File
 """
+start_time = time.clock()
+
 
 filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test images\test.tif'
 excel_filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test images\Test tracking.xlsx'
+#
+#filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4_MMStack_Pos1_red.tif'
+#excel_filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4 Manual Cell Tracking pos1.xlsx'
 um_per_px = 1
 
 """
@@ -64,7 +70,7 @@ for t in range(T):
 
 
 cell_dict = TrackingDataDictionary(excel_filename)
-cell_names = XlsxSheetNames(excel_filename)
+cell_nums = map(int , XlsxSheetNames(excel_filename))
 
 labels = RenameLabels(labels,cell_dict)
 
@@ -74,15 +80,16 @@ labels = RenameLabels(labels,cell_dict)
 
 intensities_series = []
 for cell in cell_dict:
+    cellnum = cell
     this_cell = cell_dict[cell]
     thiscell_intensity_series = []
-    for t in range(this_cell[1][0][0] - 1 , this_cell[1][-1][0]):
-        this_label = (labels[:,:,t] == this_cell[0]).astype(np.int)
+    for t in range(this_cell[0][0] - 1 , this_cell[-1][0]):
+        this_label = (labels[:,:,t] == cellnum).astype(np.int)
         properties = measure.regionprops(this_label , im_stack[:,:,t])[0]
         mean = properties.mean_intensity
         area = properties.area
         intensity = mean * area
-        this_cell[1][t].append([intensity, area, mean])
+        this_cell[t].append([intensity, area, mean])
         thiscell_intensity_series.append(intensity)
         
     intensities_series.append(thiscell_intensity_series)
@@ -190,3 +197,6 @@ u
 io.imsave('labels.tif',
           np.stack(labels).astype(np.int16))
 
+
+print ('\n\nTime elapsed (ms): '),
+print (int((time.clock() - start_time) * 1000))
