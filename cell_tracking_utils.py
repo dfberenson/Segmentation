@@ -26,26 +26,27 @@ def XlsxSheetNames(filename):
     sheet_names = xlsx.sheet_names
     return sheet_names
 
-#Takes filename for Excel file as input and returns a dictionary where each sheet name (a cell number starting with 1000) is keyed to a list
-#in the form [[frame,[x,y]]] where cellnum is a new cell index number
-def TrackingDataDictionary(filename):
+#Takes filename for Excel file as input and returns a dictionary where each sheet name (a cell number starting with 1000)
+#is keyed to a list in the form [[frame,[x,y]]] -- only does this for cells that appear in this particular stack
+def TrackingDataDictionary(filename, firstcell, lastcell):
     import pandas
     data = XlsxReader(filename)
-    sheet_names = XlsxSheetNames(filename)
+    sheet_names = map(int, XlsxSheetNames(filename))
 
     d = {}
     for i in range(len(sheet_names)):
-        frames = list(data[i]['Frame'])
-        X = list(data[i]['X'])
-        Y = list(data[i]['Y'])
-            
-        track_coordinates = []
-            
-        for j in range(len(frames)):
-            track_coordinates.append([frames[j] , [X[j],Y[j]]])
-            
-        cellnum = int(sheet_names[i])
-        d[cellnum] = track_coordinates
+        if firstcell <= sheet_names[i] <= lastcell:
+            frames = list(data[i]['Frame'])
+            X = list(data[i]['X'])
+            Y = list(data[i]['Y'])
+                
+            track_coordinates = []
+                
+            for j in range(len(frames)):
+                track_coordinates.append([frames[j] , [X[j],Y[j]]])
+                
+            cellnum = sheet_names[i]
+            d[cellnum] = track_coordinates
          
          
     return d

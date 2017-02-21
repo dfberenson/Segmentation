@@ -15,15 +15,18 @@ import time
 """
 File
 """
-start_time = time.clock()
+#filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test images\test.tif'
+#excel_filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test images\Test tracking.xlsx'
 
-
-filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test images\test.tif'
-excel_filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test images\Test tracking.xlsx'
-#
-#filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4_MMStack_Pos1_red.tif'
-#excel_filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4 Manual Cell Tracking pos1.xlsx'
+filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4_MMStack_Pos1_red.tif'
+excel_filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4 Manual Cell Tracking.xlsx'
 um_per_px = 1
+
+
+firstcell = input('First cell in this stack: ')
+lastcell = input('Last cell in this stack: ')
+
+start_time = time.clock()
 
 """
 PARAMETERS
@@ -60,6 +63,7 @@ for t in range(T):
 mask = np.copy(im_stack)
 mask_clean = np.copy(mask)
 labels = np.copy(mask).astype(np.int)
+
 for t in range(T):
     mask[:,:,t] = im_stack[:,:,t] > global_thresh_individual[t]
     # Clean the masks be removing "salt and pepper"
@@ -69,8 +73,7 @@ for t in range(T):
     labels[:,:,t] = morphology.label(mask_clean[:,:,t]).astype(np.int)
 
 
-cell_dict = TrackingDataDictionary(excel_filename)
-cell_nums = map(int , XlsxSheetNames(excel_filename))
+cell_dict = TrackingDataDictionary(excel_filename, firstcell, lastcell)
 
 labels = RenameLabels(labels,cell_dict)
 
