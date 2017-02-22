@@ -47,14 +47,13 @@ def TrackingDataDictionary(filename, firstcell, lastcell):
                 
             cellnum = sheet_names[i]
             d[cellnum] = track_coordinates
-         
-         
+                 
     return d
 
 
 #Takes 'labels' pixel matrix with originally assigned numerical labels for each cell and reassigns the numerical label
 #according to the cellnum from the cell data dictionary
-def RenameLabels(labels , cell_dict):
+def RenameLabel(t , label , cell_dict):
     for cell in cell_dict:
         if cell == 'notes':
             print cell_dict[cell]
@@ -62,45 +61,44 @@ def RenameLabels(labels , cell_dict):
             cell_data = cell_dict[cell]
             #cell_data is a list in the format [frame, [x,y]]
             cellnum = cell
-            lifespan = len(cell_data)
             first_frame = cell_data[0][0] - 1                                  #finds the right frame index for the first frame in which the cell appears
-            for f in range(lifespan):
+            last_frame = cell_data[-1][0] - 1
+            if first_frame <= t <= last_frame:                                 #only update the label if the cell is present in this frame
+                f = t - first_frame                                            #adjusts the frame index to match the image stack
                 xy = cell_data[f][1]                                           #gets the xy coordinates for the current cell
                 xy_near = xy
                 dist = 0
-                t = first_frame + f                                               #adjusts the frame index to match the image stack
-                curr_labels = labels[:,:,t]                                       #gets the label matrix for this frame
-                cell_labelnum = curr_labels[xy[1],xy[0]]                          #finds the original label number of the tracked cell.
+                cell_labelnum = label[xy[1],xy[0]]                             #finds the original label number of the tracked cell.
                                            #Note we need to address the coordinates as (Y,X)
                                            
-                while cell_labelnum == 0:
-                    dist += 1
-                    
-                    for x_adj in range(-dist,dist+1):
-                        xy_near = [xy[0] + x_adj , xy[1] + dist]
-                        cell_labelnum = curr_labels[xy_near[1],xy_near[0]]
-                        if cell_labelnum != 0:
-                            break
-                        xy_near = [xy[0] + x_adj , xy[1] - dist]
-                        cell_labelnum = curr_labels[xy_near[1],xy_near[0]]
-                        if cell_labelnum != 0:
-                            break
-                        
-                    if cell_labelnum == 0:
-                       for y_adj in range(-dist,dist+1):
-                            xy_near = [xy[0] + dist , xy[1] + y_adj]
-                            cell_labelnum = curr_labels[xy_near[1],xy_near[0]]
-                            if cell_labelnum != 0:
-                                break
-                            xy_near = [xy[0] - dist , xy[1] + y_adj]
-                            cell_labelnum = curr_labels[xy_near[1],xy_near[0]]
-                            if cell_labelnum != 0:
-                                break           
+#                while cell_labelnum == 0:
+#                    dist += 1
+#                    
+#                    for x_adj in range(-dist,dist+1):
+#                        xy_near = [xy[0] + x_adj , xy[1] + dist]
+#                        cell_labelnum = label[xy_near[1],xy_near[0]]
+#                        if cell_labelnum != 0:
+#                            break
+#                        xy_near = [xy[0] + x_adj , xy[1] - dist]
+#                        cell_labelnum = label[xy_near[1],xy_near[0]]
+#                        if cell_labelnum != 0:
+#                            break
+#                        
+#                    if cell_labelnum == 0:
+#                       for y_adj in range(-dist,dist+1):
+#                            xy_near = [xy[0] + dist , xy[1] + y_adj]
+#                            cell_labelnum = label[xy_near[1],xy_near[0]]
+#                            if cell_labelnum != 0:
+#                                break
+#                            xy_near = [xy[0] - dist , xy[1] + y_adj]
+#                            cell_labelnum = labels[xy_near[1],xy_near[0]]
+#                            if cell_labelnum != 0:
+#                                break           
    
-                cell_labelnum = curr_labels[xy_near[1],xy_near[0]]
-                curr_labels[curr_labels == cell_labelnum] = cellnum          #replaces the original label number with the official label number                    
-                labels[:,:,t] = curr_labels
-    return labels
+                cell_labelnum = label[xy_near[1],xy_near[0]]
+                label[label == cell_labelnum] = cellnum                        #replaces the original label number with the official label number                    
+
+    return label
 
 
 

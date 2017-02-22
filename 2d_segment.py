@@ -3,9 +3,10 @@
 Created on Wed Jan 8 2017
 
 @author: dfberenson@gmail.com and xies@stanford.edu
+
+@ToDo: Make image be read properly by io.imread (currently pixel intensity is being read as first axis (?))
 """
 
-import os
 from skimage import io, filters, morphology, measure, util
 from scipy.ndimage import distance_transform_edt
 import pandas as pd
@@ -15,18 +16,21 @@ import time
 """
 File
 """
-#filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test images\test.tif'
-#excel_filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test images\Test tracking.xlsx'
+filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test images\test.tif'
+excel_filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test images\Test tracking.xlsx'
 
 filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4_MMStack_Pos1_red.tif'
 excel_filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4 Manual Cell Tracking.xlsx'
 um_per_px = 1
 
 
-firstcell = input('First cell in this stack: ')
-lastcell = input('Last cell in this stack: ')
+#firstcell = input('First cell in this stack: ')
+firstcell = 1001
+#lastcell = input('Last cell in this stack: ')
+lastcell = 1007
 
 start_time = time.clock()
+print('\nWorking...')
 
 """
 PARAMETERS
@@ -34,7 +38,6 @@ PARAMETERS
 smooth_size = 25 # pixels
 min_radius = 20
 max_radius = 100
-
 min_obj_size_2D = 500; # min px size for objects in 2D
 min_obj_size_3D = 1000;
 
@@ -53,53 +56,49 @@ Preprocessing to generate clean 2D mask
 
 # Compute global Otsu threshold on the image
 global_thresh = filters.threshold_otsu(im_stack)
-
-global_thresh_individual = range(T)
-for t in range(T):
-    global_thresh_individual[t] = filters.threshold_otsu(im_stack[:,:,t])
-
-# Threshold the image based on the calculated thresholds
-
-mask = np.copy(im_stack)
-mask_clean = np.copy(mask)
-labels = np.copy(mask).astype(np.int)
-
-for t in range(T):
-    mask[:,:,t] = im_stack[:,:,t] > global_thresh_individual[t]
-    # Clean the masks be removing "salt and pepper"
-    mask_clean[:,:,t] = morphology.binary_closing(mask[:,:,t])
-    mask_clean[:,:,t] = morphology.binary_opening(mask_clean[:,:,t])
-    # Use connected components to find the distinct objects
-    labels[:,:,t] = morphology.label(mask_clean[:,:,t]).astype(np.int)
-
+print('\nWorking....')
 
 cell_dict = TrackingDataDictionary(excel_filename, firstcell, lastcell)
-
-labels = RenameLabels(labels,cell_dict)
-
-# Measures intensities and area so each cell in cell_dict now points to a list in the format
-# [cellnum , [[frame , [x,y] , [intensity, area, mean]]]]
-# Also gets a cellwise list of just the intensities as a timeseries
-
-intensities_series = []
+intensities_series_dict = {}
 for cell in cell_dict:
-    cellnum = cell
-    this_cell = cell_dict[cell]
-    thiscell_intensity_series = []
-    for t in range(this_cell[0][0] - 1 , this_cell[-1][0]):
-        this_label = (labels[:,:,t] == cellnum).astype(np.int)
-        properties = measure.regionprops(this_label , im_stack[:,:,t])[0]
+    intensities_series_dict[cell] = []
+
+for t in range(T):
+    image = im_stack[:,:,t]
+    global_thresh_individual = filters.threshold_otsu(image)
+
+    # Threshold the image based on the calculated thresholds
+
+    mask = np.copy(image)
+    mask_clean = np.copy(mask)
+    label = np.copy(mask).astype(np.int)
+
+    mask = image > global_thresh_individual
+    # Clean the masks be removing "salt and pepper"
+    mask_clean = morphology.binary_closing(mask)
+    mask_clean = morphology.binary_opening(mask_clean)
+    # Use connected components to find the distinct objects
+    label = morphology.label(mask_clean).astype(np.int)
+
+    label = RenameLabel(t , label , cell_dict)
+
+    # Measures intensities and area so each cell in cell_dict now points to a list in the format
+    # [[frame , [x,y] , [intensity, area, mean]]]
+    # Also gets a cellwise list of just the intensities as a timeseries
+
+    for cell in cell_dict:
+        cellnum = cell
+        this_cell_info = cell_dict[cell]
+
+        this_cell_label = (label == cellnum).astype(np.int)
+        properties = measure.regionprops(this_cell_label , image)[0]
         mean = properties.mean_intensity
         area = properties.area
         intensity = mean * area
-        this_cell[t].append([intensity, area, mean])
-        thiscell_intensity_series.append(intensity)
-        
-    intensities_series.append(thiscell_intensity_series)
-        
+        this_cell_info[t].append([intensity, area, mean])
+        intensities_series_dict[cell].append(intensity)
 
-
-
+print('\nWorking.....')
 """
 Get statistics in 3D
 """
@@ -196,9 +195,9 @@ u
 """
 #
 #print "Total # of final labels: %d " % (objectIDs.size)
-
-io.imsave('labels.tif',
-          np.stack(labels).astype(np.int16))
+#
+#######io.imsave('labels.tif',
+#######          np.stack(labels).astype(np.int16))
 
 
 print ('\n\nTime elapsed (ms): '),
