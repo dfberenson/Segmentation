@@ -4,7 +4,7 @@ Created on Wed Jan 8 2017
 
 @author: dfberenson@gmail.com and xies@stanford.edu
 
-@ToDo: Make image be read properly by io.imread (currently pixel intensity is being read as first axis (?))
+@ToDo: Fix thresholding
 """
 
 from skimage import io, filters, morphology, measure, util
@@ -25,12 +25,12 @@ um_per_px = 1
 
 
 #firstcell = input('First cell in this stack: ')
-firstcell = 1001
+firstcell = 1000
 #lastcell = input('Last cell in this stack: ')
-lastcell = 1007
+lastcell = 1000
 
 start_time = time.clock()
-print('\nWorking...')
+print('\nWorking...\n')
 
 """
 PARAMETERS
@@ -47,7 +47,7 @@ Image I/O
 
 im_stack = io.imread(filename)
 im_stack = util.img_as_float(im_stack)
-[Y,X,T] = im_stack.shape
+[T,Y,X] = im_stack.shape
 
 """
 Preprocessing to generate clean 2D mask
@@ -56,15 +56,15 @@ Preprocessing to generate clean 2D mask
 
 # Compute global Otsu threshold on the image
 global_thresh = filters.threshold_otsu(im_stack)
-print('\nWorking....')
+print('Working....\n')
 
 cell_dict = TrackingDataDictionary(excel_filename, firstcell, lastcell)
 intensities_series_dict = {}
 for cell in cell_dict:
     intensities_series_dict[cell] = []
 
-for t in range(T):
-    image = im_stack[:,:,t]
+for t in range(1): #Only doing one loop at the moment
+    image = im_stack[t,:,:]
     global_thresh_individual = filters.threshold_otsu(image)
 
     # Threshold the image based on the calculated thresholds
@@ -98,7 +98,7 @@ for t in range(T):
         this_cell_info[t].append([intensity, area, mean])
         intensities_series_dict[cell].append(intensity)
 
-print('\nWorking.....')
+print('Working.....\n')
 """
 Get statistics in 3D
 """
