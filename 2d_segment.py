@@ -25,9 +25,9 @@ um_per_px = 1
 
 
 #firstcell = input('First cell in this stack: ')
-firstcell = 1000
+firstcell = 1001
 #lastcell = input('Last cell in this stack: ')
-lastcell = 1000
+lastcell = 1007
 
 start_time = time.clock()
 print('\nWorking...\n')
@@ -51,7 +51,6 @@ im_stack = util.img_as_float(im_stack)
 
 """
 Preprocessing to generate clean 2D mask
-
 """
 
 # Compute global Otsu threshold on the image
@@ -63,8 +62,8 @@ intensities_series_dict = {}
 for cell in cell_dict:
     intensities_series_dict[cell] = []
 
-for t in range(1): #Only doing one loop at the moment
-    image = im_stack[t,:,:]
+for t in range(T): #Only doing one loop at the moment
+    image = filters.gaussian(im_stack[t] , sigma = 1)
     global_thresh_individual = filters.threshold_otsu(image)
 
     # Threshold the image based on the calculated thresholds
@@ -81,7 +80,7 @@ for t in range(1): #Only doing one loop at the moment
     label = morphology.label(mask_clean).astype(np.int)
 
     label = RenameLabel(t , label , cell_dict)
-
+    
     # Measures intensities and area so each cell in cell_dict now points to a list in the format
     # [[frame , [x,y] , [intensity, area, mean]]]
     # Also gets a cellwise list of just the intensities as a timeseries
@@ -89,16 +88,20 @@ for t in range(1): #Only doing one loop at the moment
     for cell in cell_dict:
         cellnum = cell
         this_cell_info = cell_dict[cell]
+        first_frame = this_cell_info[0][0] - 1
 
         this_cell_label = (label == cellnum).astype(np.int)
-        properties = measure.regionprops(this_cell_label , image)[0]
-        mean = properties.mean_intensity
-        area = properties.area
-        intensity = mean * area
-        this_cell_info[t].append([intensity, area, mean])
-        intensities_series_dict[cell].append(intensity)
+        if np.any(this_cell_label):                 #if this cell's image has any nonzero values
+            properties = measure.regionprops(this_cell_label , image)[0]
+            mean = properties.mean_intensity
+            area = properties.area
+            intensity = mean * area
+            this_cell_info[t - first_frame].append([intensity, area, mean])               #NEED TO USE PROPER INDEX THAT STARTS WITH 0 FOR EACH CELL
+            intensities_series_dict[cell].append(intensity)
 
 print('Working.....\n')
+
+
 """
 Get statistics in 3D
 """
