@@ -12,6 +12,7 @@ from scipy.ndimage import distance_transform_edt
 import pandas as pd
 import numpy as np
 import time
+import matplotlib.pyplot as plt
 
 """
 File
@@ -20,6 +21,7 @@ filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test imag
 excel_filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Test images\Test tracking.xlsx'
 
 filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4_MMStack_Pos1_red.tif'
+filename_chan2 = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4_MMStack_Pos1_green.tif'
 excel_filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4 Manual Cell Tracking.xlsx'
 um_per_px = 1
 
@@ -48,6 +50,10 @@ Image I/O
 im_stack = io.imread(filename)
 im_stack = util.img_as_float(im_stack)
 [T,Y,X] = im_stack.shape
+mask_clean_stack = []
+
+im_stack_chan2 = io.imread(filename_chan2)
+im_stack_chan2 = util.img_as_float(im_stack_chan2)
 
 """
 Preprocessing to generate clean 2D mask
@@ -59,11 +65,15 @@ print('Working....\n')
 
 cell_dict = TrackingDataDictionary(excel_filename, firstcell, lastcell)
 intensities_series_dict = {}
+intensities_series_chan2_dict = {}
 for cell in cell_dict:
     intensities_series_dict[cell] = []
+    intensities_series_chan2_dict[cell] = []
 
 for t in range(T): #Only doing one loop at the moment
     image = filters.gaussian(im_stack[t] , sigma = 1)
+    image_chan2 = filters.gaussian(im_stack_chan2[t], sigma = 1)
+    
     global_thresh_individual = filters.threshold_otsu(image)
 
     # Threshold the image based on the calculated thresholds
@@ -76,6 +86,7 @@ for t in range(T): #Only doing one loop at the moment
     # Clean the masks be removing "salt and pepper"
     mask_clean = morphology.binary_closing(mask)
     mask_clean = morphology.binary_opening(mask_clean)
+    mask_clean_stack.append(mask_clean)
     # Use connected components to find the distinct objects
     label = morphology.label(mask_clean).astype(np.int)
 
@@ -96,8 +107,14 @@ for t in range(T): #Only doing one loop at the moment
             mean = properties.mean_intensity
             area = properties.area
             intensity = mean * area
-            this_cell_info[t - first_frame].append([intensity, area, mean])               #NEED TO USE PROPER INDEX THAT STARTS WITH 0 FOR EACH CELL
+            properties_chan2 = measure.regionprops(this_cell_label , image_chan2)[0]
+            mean_chan2 = properties_chan2.mean_intensity
+            area_chan2 = properties_chan2.area
+            intensity_chan2 = mean_chan2 * area_chan2
+            this_cell_info[t - first_frame].append([intensity, area, mean])
+            this_cell_info[t - first_frame].append([intensity_chan2, area_chan2, mean_chan2])
             intensities_series_dict[cell].append(intensity)
+            intensities_series_chan2_dict[cell].append(intensity_chan2)
 
 print('Working.....\n')
 
@@ -201,7 +218,9 @@ u
 #
 #######io.imsave('labels.tif',
 #######          np.stack(labels).astype(np.int16))
+for cell in intensities_series_dict:
+    plt.plot(intensities_series_dict[cell])
+    plt.plot(intensities_series_chan2_dict[cell])
 
-
-print ('\n\nTime elapsed (ms): '),
-print (int((time.clock() - start_time) * 1000))
+print ('\n\nTime elapsed (s): '),
+print (int(time.clock() - start_time))
