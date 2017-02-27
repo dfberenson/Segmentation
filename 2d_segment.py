@@ -218,6 +218,15 @@ u
 #
 #######io.imsave('labels.tif',
 #######          np.stack(labels).astype(np.int16))
+
+import csv, json
+csv_filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4 cell_dict.csv'
+with open(csv_filename, 'a') as f:
+    writer = csv.DictWriter(f, fieldnames = ['cellnum' , 'celldata'])
+    for cell in cell_dict:
+        writer.writerow({'cellnum' : cell , 'celldata' : json.dumps(cell_dict[cell])})
+
+
 for cell in intensities_series_dict:
     plt.plot(intensities_series_dict[cell])
     plt.plot(intensities_series_chan2_dict[cell])
