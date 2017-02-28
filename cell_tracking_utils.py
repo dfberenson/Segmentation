@@ -30,6 +30,7 @@ def XlsxSheetNames(filename):
 #is keyed to a list in the form [[frame,[x,y]]] -- only does this for cells that appear in this particular stack
 def TrackingDataDictionary(filename, firstcell, lastcell):
     import pandas
+    import numpy as np
     data = XlsxReader(filename)
     sheet_names = map(int, XlsxSheetNames(filename))
 
@@ -43,7 +44,7 @@ def TrackingDataDictionary(filename, firstcell, lastcell):
             track_coordinates = []
                 
             for j in range(len(frames)):
-                track_coordinates.append([frames[j] , [X[j],Y[j]]])
+                track_coordinates.append([frames[j] , X[j] , Y[j]])
                 
             cellnum = sheet_names[i]
             d[cellnum] = track_coordinates
@@ -53,19 +54,19 @@ def TrackingDataDictionary(filename, firstcell, lastcell):
 
 #Takes 'labels' pixel matrix with originally assigned numerical labels for each cell and reassigns the numerical label
 #according to the cellnum from the cell data dictionary
-def RenameLabel(t , label , cell_dict):
+def RenameLabel(t , label , cell_dict, maxdist):
     for cell in cell_dict:
         if cell == 'notes':
             print cell_dict[cell]
         else:
             cell_data = cell_dict[cell]
-            #cell_data is a list in the format [frame, [x,y]]
+            #cell_data is a list in the format [frame,x,y]
             cellnum = cell
             first_frame = cell_data[0][0] - 1                                  #finds the right frame index for the first frame in which the cell appears
             last_frame = cell_data[-1][0] - 1
             if first_frame <= t <= last_frame:                                 #only update the label if the cell is present in this frame
                 f = t - first_frame                                            #adjusts the frame index to match the image stack
-                xy = cell_data[f][1]                                           #gets the xy coordinates for the current cell
+                xy = cell_data[f][1:3]                                         #gets the xy coordinates for the current cell
                 xy_near = xy
                 dist = 0
                 cell_labelnum = label[xy[1],xy[0]]                             #finds the original label number of the tracked cell.
@@ -103,7 +104,7 @@ def RenameLabel(t , label , cell_dict):
 
 
 
-#Takes filename for Excel file as input and returns a sheetwise list of timepoints and coordinates in the form [frame , [x,y]]
+#Takes filename for Excel file as input and returns a sheetwise list of timepoints and coordinates in the form [frame , x , y]
 def TrackingDataReader(filename):
     if filename[-4:] == 'xlsx':
         import pandas
@@ -119,7 +120,7 @@ def TrackingDataReader(filename):
             track_coordinates = []
             
             for j in range(len(frames)):
-               track_coordinates.append([frames[j] , [X[j],Y[j]]])              
+               track_coordinates.append([frames[j] , [X[j] , Y[j]]])              
     
             all_coordinates.append(track_coordinates)
     

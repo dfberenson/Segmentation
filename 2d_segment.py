@@ -22,14 +22,18 @@ excel_filename = r'C:\Users\Skotheim Lab\Desktop\Python Scripts\Segmentation\Tes
 
 filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4_MMStack_Pos1_red.tif'
 filename_chan2 = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4_MMStack_Pos1_green.tif'
+
+filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4_MMStack_Pos2_red.tif'
+filename_chan2 = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4_MMStack_Pos2_green.tif'
+
 excel_filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4 Manual Cell Tracking.xlsx'
 um_per_px = 1
 
 
 #firstcell = input('First cell in this stack: ')
-firstcell = 1001
+firstcell = 1008
 #lastcell = input('Last cell in this stack: ')
-lastcell = 1007
+lastcell = 1017
 
 start_time = time.clock()
 print('\nWorking...\n')
@@ -42,6 +46,7 @@ min_radius = 20
 max_radius = 100
 min_obj_size_2D = 500; # min px size for objects in 2D
 min_obj_size_3D = 1000;
+max_px_error = 10
 
 """
 Image I/O
@@ -70,12 +75,12 @@ for cell in cell_dict:
     intensities_series_dict[cell] = []
     intensities_series_chan2_dict[cell] = []
 
-for t in range(T): #Only doing one loop at the moment
+for t in range(T):
     image = filters.gaussian(im_stack[t] , sigma = 1)
     image_chan2 = filters.gaussian(im_stack_chan2[t], sigma = 1)
     
     global_thresh_individual = filters.threshold_otsu(image)
-
+    global_thresh_individual = 0.0018
     # Threshold the image based on the calculated thresholds
 
     mask = np.copy(image)
@@ -90,7 +95,7 @@ for t in range(T): #Only doing one loop at the moment
     # Use connected components to find the distinct objects
     label = morphology.label(mask_clean).astype(np.int)
 
-    label = RenameLabel(t , label , cell_dict)
+    label = RenameLabel(t , label , cell_dict, max_px_error)
     
     # Measures intensities and area so each cell in cell_dict now points to a list in the format
     # [[frame , [x,y] , [intensity, area, mean]]]
@@ -100,6 +105,7 @@ for t in range(T): #Only doing one loop at the moment
         cellnum = cell
         this_cell_info = cell_dict[cell]
         first_frame = this_cell_info[0][0] - 1
+        last_frame = this_cell_info[-1][0] - 1
 
         this_cell_label = (label == cellnum).astype(np.int)
         if np.any(this_cell_label):                 #if this cell's image has any nonzero values
@@ -111,10 +117,21 @@ for t in range(T): #Only doing one loop at the moment
             mean_chan2 = properties_chan2.mean_intensity
             area_chan2 = properties_chan2.area
             intensity_chan2 = mean_chan2 * area_chan2
-            this_cell_info[t - first_frame].append([intensity, area, mean])
-            this_cell_info[t - first_frame].append([intensity_chan2, area_chan2, mean_chan2])
+            this_cell_info[t - first_frame].append(intensity)
+            this_cell_info[t - first_frame].append(area)
+            this_cell_info[t - first_frame].append(mean)
+            this_cell_info[t - first_frame].append(intensity_chan2)
+            this_cell_info[t - first_frame].append(area_chan2)
+            this_cell_info[t - first_frame].append(mean_chan2)
             intensities_series_dict[cell].append(intensity)
             intensities_series_chan2_dict[cell].append(intensity_chan2)
+        elif first_frame <= t <= last_frame:
+            this_cell_info[t - first_frame].append(-1)
+            this_cell_info[t - first_frame].append(-1)
+            this_cell_info[t - first_frame].append(-1)
+            this_cell_info[t - first_frame].append(-1)
+            this_cell_info[t - first_frame].append(-1)
+            this_cell_info[t - first_frame].append(-1)
 
 print('Working.....\n')
 
@@ -219,17 +236,23 @@ u
 #######io.imsave('labels.tif',
 #######          np.stack(labels).astype(np.int16))
 
+
+cell_array_dict = {}
+for cell in cell_dict:
+    cell_array_dict[cell] = np.asarray(cell_dict[cell])
+
 import csv, json
 csv_filename = r'E:\DFB imaging experiments\DFB_170203_HMEC_1G_Fucci_4\DFB_170203_HMEC_1G_Fucci_4 cell_dict.csv'
 with open(csv_filename, 'a') as f:
     writer = csv.DictWriter(f, fieldnames = ['cellnum' , 'celldata'])
-    for cell in cell_dict:
-        writer.writerow({'cellnum' : cell , 'celldata' : json.dumps(cell_dict[cell])})
+    writer.writeheader()
+    for cell in cell_array_dict:
+        writer.writerow({'cellnum' : cell , 'celldata' : json.dumps(cell_array_dict[cell].tolist())})
+#Don't ask me why I need to convert it to a numpy array and then back to a list to get json.dumps() to work
 
-
-for cell in intensities_series_dict:
-    plt.plot(intensities_series_dict[cell])
-    plt.plot(intensities_series_chan2_dict[cell])
+#for cell in intensities_series_dict:
+#    plt.plot(intensities_series_dict[cell])
+#    plt.plot(intensities_series_chan2_dict[cell])
 
 print ('\n\nTime elapsed (s): '),
 print (int(time.clock() - start_time))
